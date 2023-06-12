@@ -1,0 +1,31 @@
+Pobieramy z pliku nr sprawy klienta wybieramy datę i odpalamy scrypt (w orange jak się otweira przez excela ucina 0 przed nr wiec zawsze sprawdzamy najpierw select czy ilość spraw wychodzi taka sama jak w pliku)
+
+
+  INSERT INTO flex_claim_other_data (issue_id,key,value,created_at,Created_BY)
+  select DISTINCT  
+  	id
+  	,'Zdjęcie blokady'
+  	,'19.04.2023'
+  	,now()
+  	,99
+  from flex_claims 
+  where creditor_id in ('00007245169435',
+'00009244346485')
+
+
+
+    ;
+Pobieramy z pliku nr sprawy klienta wybieramy datę i odpalamy scrypt (w orange jak się otweira przez excela ucina 0 przed nr wiec zawsze sprawdzamy najpierw select czy ilość spraw wychodzi taka sama jak w pliku)
+
+
+      INSERT INTO flex_claim_other_data (issue_id,key,value,created_at,Created_BY)
+  select DISTINCT  
+  	id
+  	,'Likwidacja'
+  	,'01.06.2023'
+  	,now()
+  	,99
+  from flex_claims 
+  where creditor_id in ('00001826465462',
+'00007220278407',
+'00003786894913')
