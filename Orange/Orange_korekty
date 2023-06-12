@@ -4,14 +4,51 @@ select *
 from staging_orange_korekty k;
 
 ---------Wgrywamy pliki i odpalamy scrypt 
+;
+delete
+from staging_orange_korekty_v1
+;
+insert into staging_orange_korekty_v1
+   (
+    idrodzajplik
+    ,pakiet
+    ,nrewid
+    ,dokument
+    ,kwotakore
+    ,datakore
+    ,datarozl
+  )
 
-  
-update flex_claim_items i set start_capital = start_capital - kwotakore
+select 
+    k.idrodzajplik
+    ,k.pakiet
+    ,k.nrewid
+    ,k.dokument
+    ,sum(k.kwotakore) kwotakore
+    ,k.datakore
+    ,k.datarozl
 from staging_orange_korekty k
+GROUP BY 
+k.idrodzajplik
+    ,k.pakiet
+    ,k.nrewid
+    ,k.dokument
+    ,k.datakore
+    ,k.datarozl
+
+;  
+
+
+update flex_claim_items i set start_capital = start_capital - kwotakore
+from staging_orange_korekty_v1 k
   join flex_claims c on c.creditor_id = k.nrewid
   JOIN flex_claim_other_data d on d.issue_id = c.id 
   where value = k.pakiet 
- and  i.issue_id = c.id and i.item_number = k.dokument;
+ and  i.issue_id = c.id and i.item_number = k.dokument
+and i.type_code <> 65
+
+
+;
 
 
   insert into flex_claim_items 
@@ -38,13 +75,14 @@ from staging_orange_korekty k
 , commission
 , commission_force
 , auto_cost
-,info)
-  
+  ,info)
+
+
 select   
 c.id
  ,65
 ,Dokument
-,0-- pierwotny kapitał
+,0
 ,datakore
 ,datarozl
 ,0
@@ -55,7 +93,7 @@ c.id
 ,0
 ,0
 ,false
-,0 ---typ odsetek /////////do zrobienia
+,0 
 ,0
 ,true
 ,datarozl
@@ -67,7 +105,7 @@ c.id
   from staging_orange_korekty k
   join flex_claims c on c.creditor_id = k.nrewid
   JOIN flex_claim_other_data d on d.issue_id = c.id 
-  --join flex_claim_items i on i.issue_id = c.id and i.item_number = k.dokument
   where value = k.pakiet 
+
 
 ;
