@@ -1,0 +1,73 @@
+---usuwamy zawartość tabeli
+select *
+--delete
+from staging_orange_korekty k;
+
+---------Wgrywamy pliki i odpalamy scrypt 
+
+  
+update flex_claim_items i set start_capital = start_capital - kwotakore
+from staging_orange_korekty k
+  join flex_claims c on c.creditor_id = k.nrewid
+  JOIN flex_claim_other_data d on d.issue_id = c.id 
+  where value = k.pakiet 
+ and  i.issue_id = c.id and i.item_number = k.dokument;
+
+
+  insert into flex_claim_items 
+(issue_id
+, type_code
+, item_number
+, prior_capital
+, issuance_date
+, payment_date
+--, interest_start_date
+, start_capital
+, start_interest
+, creator_id
+, created_at
+, prior_interest -- odsetki pierwotne
+, prior_costs -- koszt pierwrotne
+, start_costs -- koszty startowe
+, interest_on 
+, interest_type
+, interest_value
+, publish_on_niezaplacone
+, due_date -- data wymagalności 
+, epu_on
+, commission
+, commission_force
+, auto_cost
+,info)
+  
+select   
+c.id
+ ,65
+,Dokument
+,0-- pierwotny kapitał
+,datakore
+,datarozl
+,0
+,0
+,99
+,now()
+,0
+,0
+,0
+,false
+,0 ---typ odsetek /////////do zrobienia
+,0
+,true
+,datarozl
+, false
+,0
+,false
+,false
+,kwotakore
+  from staging_orange_korekty k
+  join flex_claims c on c.creditor_id = k.nrewid
+  JOIN flex_claim_other_data d on d.issue_id = c.id 
+  --join flex_claim_items i on i.issue_id = c.id and i.item_number = k.dokument
+  where value = k.pakiet 
+
+;
