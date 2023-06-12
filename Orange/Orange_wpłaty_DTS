@@ -1,0 +1,6 @@
+Wpłaty wgrywamy przez RDP. Logujemy się na konto adminit na serwerze 192.168.1.5 haslo DT.........
+
+1 krok:
+- C:\temp\temp_OrangePayment sprawdzamy czy folder jest pusty przed każdym odpaleniem trzeba sprawdzić. 
+2 krok: 
+- Włączamy sql server management studio z drzewka wybieramy SQL Server Agent -> jobs -> prawy na Zasilanie_ssis_Orange_Payment i Start Job at Step. Job kończy się niepowodzeniem zamykamy wtedy okno i usuwamy plik z C:\temp\temp_OrangePayment
