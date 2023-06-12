@@ -1,0 +1,71 @@
+---usuwamy zawartość tabeli
+select *
+  --delete 
+  from staging_orange_reklamacje;
+
+----- wgrywamy pliki i odpalamy scrypt 
+
+INSERT INTO flex_actions (issue_id,done_at,type_code,findings_code,creator_id,comment,created_at)
+  SELECT 
+	c.id
+	,now()
+	,1
+  ,326
+	,99
+	,'Reklamacja, numer zgłoszenia:'|| r.NrZgloszenia||' '|| 'Typ zgłoszenia:'||PodTypZgl
+	,Now()
+  FROM flex_Claims c 
+   JOIN staging_orange_reklamacje r on r.nrewid = c.creditor_id 
+  WHERE c.stage_code <> 4 
+  and c.status_code <> 152 ;
+
+
+ 
+
+  update flex_claim_prior_statuses s set date_end = now()
+  FROM staging_orange_reklamacje r 
+  JOIN flex_Claims c on c.creditor_id = r.nrewid
+  WHERE c.stage_code <> 4 
+  and c.status_code <> 152 
+  and r.nrewid = c.creditor_id  
+  and date_end is null 
+  and s.issue_id = c.id ;
+
+
+
+  INSERT INTO flex_claim_prior_statuses (issue_id,status_code,date_start,user_id)
+  select c.id
+    ,152
+    ,now()
+    ,99 
+  FROM staging_orange_reklamacje r ,flex_Claims c 
+  WHERE c.stage_code <> 4 
+  and c.status_code <> 152 
+  and r.nrewid = c.creditor_id  
+;
+
+
+  update flex_Claims c set status_code = 152 
+  FROM staging_orange_reklamacje r
+  WHERE c.stage_code <> 4 
+  and c.status_code <> 152 
+  and r.nrewid = c.creditor_id;  
+
+
+  INSERT INTO flex_claim_prior_statuses (issue_id,status_code,date_start,user_id)
+  select c.id
+    ,106
+    ,now()
+    ,99 
+  FROM flex_Claims c 
+   where c.package_id in (select id from flex_package where customer_id = 7)
+    and c.status_code = 152 
+    and c.stage_code = 1 
+    and c.creditor_id not in ( select nrewid from staging_orange_reklamacje)
+
+;
+update flex_claims c set status_code = 106
+  where c.package_id in (select id from flex_package where customer_id = 7)
+    and c.status_code = 152 
+    and c.stage_code = 1 
+    and c.creditor_id not in ( select nrewid from staging_orange_reklamacje)
