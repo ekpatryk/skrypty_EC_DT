@@ -1,0 +1,190 @@
+----- Usuwanie zawartości Tabel -----------------
+
+select * 
+--delete 
+from staging_vectrar_aktualizacja_baza
+
+select *
+--delete 
+from staging_vectrar_aktualizacja_finanse 
+
+select *  
+--delete 
+from staging_vectrar_aktualizacja_wpłaty
+
+;
+
+----------------- Początek Aktualizacji --------------------
+insert into flex_claim_prior_stages (issue_id,stage_code,date_start,user_id)
+select
+	a.id
+	,'4'
+	,Now()
+	,'99'
+from flex_claims a, Staging_Vectrar_Aktualizacja_Baza b
+where 
+b.Uwagi in ('Brak zaległości','Wycofany','Upadłość konsumencka','zgon Ab','zgon ab','brak zaległości','wycofany - ab aktywny ','wycofany - ab aktywny ','brak zaległości ','brak zaległości','wycofany - ab aktywny','wycofany','upadłość konsumencka') 
+
+and a.creditor_id= b."kod klienta" and a.package_id in ( select id from flex_package where customer_id = 14 )  and a.stage_code!='4'
+;
+
+update flex_claims a set stage_code='4' 
+from
+Staging_Vectrar_Aktualizacja_Baza b
+where b.Uwagi in ('Brak zaległości','Wycofany','Upadłość konsumencka','zgon Ab','wycofany - ab aktywny ','zgon ab','brak zaległości','brak zaległości ','wycofany - ab aktywny','wycofany','upadłość konsumencka')  and a.creditor_id= b."kod klienta" and a.package_id in ( select id from flex_package where customer_id = 14 )  and a.stage_code!='4'
+;
+
+update flex_claim_details c set end_date= current_date
+From flex_claims a, Staging_Vectrar_Aktualizacja_Baza b
+where b.Uwagi in ('Brak zaległości','Wycofany','Upadłość konsumencka','zgon Ab','zgon ab','wycofany - ab aktywny ','brak zaległości','brak zaległości ','wycofany - ab aktywny','wycofany','upadłość konsumencka')   and a.creditor_id= b."kod klienta" and a.package_id in ( select id from flex_package where customer_id = 14 )  and a.stage_code='4' and c.issue_id=a.id and a.stage_code='4' and c.end_date >=current_date
+;
+
+
+
+
+update flex_claim_items i set start_capital = "KWOTA NIEROZLICZONA"
+from staging_vectrar_aktualizacja_finanse f
+join flex_claims c on c.creditor_id = f."ID KONTO"
+where "KWOTA NIEROZLICZONA" <> start_capital and i.issue_id = c.id and i.issuance_date = f."DATA WYSTAWIENIA" and "NUMER OPERACJI" = item_number 
+
+;
+
+
+
+update flex_claim_items i set start_capital = 0
+from flex_claims c
+join Staging_Vectrar_Aktualizacja_Baza b on b."kod klienta" = c.creditor_id --and b."Data przekazania" = cast(c.created_at as date)
+Where 
+c.id = i.issue_id
+and
+c.package_id in ( select id from flex_package where customer_id = 14 ) 
+and
+c.stage_code!='4'
+and
+i.item_number not in (
+							select f."NUMER OPERACJI"
+							FROM staging_vectrar_aktualizacja_finanse f	);
+							
+						
+						
+---- wpłaty--------
+
+INSERT INTO flex_claim_payments  (amount,date,description,issue_id,type_code,created_at,creator_id,currency)
+select 
+	kwota
+	,"DATA WYSTAWIENIA"
+	,'Wpłata Klient'
+	,x.id
+	,1
+	,Now()
+	,99
+	,'PLN'
+
+FROM 
+(
+select id,w."DATA WYSTAWIENIA",kwota,"ID KONTO"
+from staging_vectrar_aktualizacja_wpłaty w 
+join flex_claims c on c.creditor_id = w."ID KONTO"
+where package_id in ( select id from flex_package where customer_id = 14 ) 
+
+) x
+LEFT JOIN
+(
+select issue_id,amount,date,c.creditor_id
+from flex_claim_payments p 
+join flex_claims c on p.issue_id = c.id 
+where package_id in ( select id from flex_package where customer_id = 14 ) 
+) x1 on x1.creditor_id  = x."ID KONTO" and kwota = amount and date = "DATA WYSTAWIENIA"
+where amount is null 
+;
+---dogrywanie dokumentów-------
+
+INSERT INTO flex_actions (issue_id,done_at,type_code,creator_id,comment,created_at)
+select 
+	c.id
+	,now()
+	,10025
+	,99
+	,'Dodano dokument finansowy: '||f."NUMER OPERACJI"||' Data wystawienia: '||f."DATA WYSTAWIENIA"||' Data Płatności: '||f."TERMIN PŁATNOŚCI"||' Kapitał Startowy: '||f."KWOTA NIEROZLICZONA"
+	,Now()
+from flex_claims c
+join Staging_Vectrar_Aktualizacja_Baza b on b."kod klienta" = c.creditor_id 
+join staging_vectrar_aktualizacja_finanse f on f."ID KONTO" = b."kod klienta"
+Where 
+c.stage_code!='4'
+and
+f."NUMER OPERACJI" not in (
+							select i.item_number
+							FROM flex_claim_items i where i.issue_id = c.id	);
+
+
+
+
+
+insert into flex_claim_items 
+(issue_id
+, type_code
+, item_number
+, prior_capital
+, issuance_date
+, payment_date
+--, interest_start_date
+, start_capital
+, start_interest
+, creator_id
+, created_at
+, prior_interest -- odsetki pierwotne
+, prior_costs -- koszt pierwrotne
+, start_costs -- koszty startowe
+, interest_on 
+, interest_type
+, interest_value
+, publish_on_niezaplacone
+, due_date -- data wymagalności 
+, epu_on
+, commission
+, commission_force
+, auto_cost)
+
+select 
+c.id
+, CASE 
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Nota księgowa' THEN 123
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Faktura korygująca' THEN 11
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Faktura VAT za usługi tel.' THEN 124
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Nota odsetkowa' THEN 8
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Polecenie wypłaty' THEN 125
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Rozliczenie Direct Billing' THEN 126 
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Faktura książeczkowa' THEN 127
+	WHEN "TYP OPERACJI FINANSOWEJ" = 'Przerzut obciążeniowy' THEN 128 
+	ELSE 1
+	END --SELECT * FROM public.flex_claim_items_dict
+,f."NUMER OPERACJI"
+,f."KWOTA NIEROZLICZONA"-- pierwotny kapitał
+,"DATA WYSTAWIENIA"
+,"TERMIN PŁATNOŚCI"
+,f."KWOTA NIEROZLICZONA"
+,0
+,99
+,now()
+,0
+,0
+,0
+,false
+,Null ---typ odsetek /////////do zrobienia
+,0
+,true
+,"TERMIN PŁATNOŚCI"
+, false
+,0
+,false
+,false
+from flex_claims c
+join Staging_Vectrar_Aktualizacja_Baza b on b."kod klienta" = c.creditor_id 
+join staging_vectrar_aktualizacja_finanse f on f."ID KONTO" = b."kod klienta"
+Where 
+c.stage_code!='4'
+and
+f."NUMER OPERACJI" not in (
+							select i.item_number
+							FROM flex_claim_items i where i.issue_id = c.id	);
