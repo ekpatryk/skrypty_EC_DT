@@ -1,0 +1,97 @@
+
+---- usuwamy zawartość tabeli
+select * 
+  --delete 
+from staging_orange_aktualizacja_dok 
+  order by 2 
+
+
+
+---- wgrywamy plik o cześć nazwy _DOK_ i odpalamy scrypt 
+
+insert into flex_claim_items 
+(issue_id
+, type_code
+, item_number
+, prior_capital
+, issuance_date
+, payment_date
+--, interest_start_date
+, start_capital
+, start_interest
+, creator_id
+, created_at
+, prior_interest -- odsetki pierwotne
+, prior_costs -- koszt pierwrotne
+, start_costs -- koszty startowe
+, interest_on 
+, interest_type
+, interest_value
+, publish_on_niezaplacone
+, due_date -- data wymagalności 
+, epu_on
+, commission
+, commission_force
+, auto_cost
+  ,info)
+ 
+
+select Distinct  
+a.id
+ ,CASE 
+    WHEN RodzajDok in ('D','Po','SD','NOE','IN8','NOS') THEN 8
+    WHEN RodzajDok in ('F','G','Pe','Pf','SF','FVS','FVK','IN5','IN22','IN11','IN20','FVT','R','S') THEN 1
+    WHEN RodzajDok in ('K','Kk','SK','FKS','FKK','IN6','IN23','IN21','F','K') THEN 11
+    WHEN RodzajDok in ('N','P','Pr','R','S','T','L','EE','EE/')  THEN 21
+    WHEN RodzajDok in ('Pb','Pc','Pg','Ph','Pm','Pn','SX','X','NKE','IN7','DN3','DN1','DN2','DN7','PA','PD','DN5','NOS','Z') THEN 16
+    WHEN RodzajDok in ('Pk','A') THEN 65
+    WHEN RodzajDok in ('NU') THEN 119
+  ELSE '1' 
+  END 
+,Dokument
+,Pierwotna-- pierwotny kapitał
+,DataWyst
+,TerminPlat
+,Naleznosc
+,0
+,99
+,now()
+,0
+,0
+,0
+,false
+,0 ---typ odsetek /////////do zrobienia
+,0
+,true
+,TerminPlat
+, false
+,0
+,false
+,false
+,NrAktualizacji
+from staging_orange_aktualizacja_dok b
+inner join flex_claims a on b.NrEwid = a.creditor_id
+JOIN flex_claim_other_data d on d.issue_id = a.id 
+where value = b.pakiet 
+
+;
+
+
+INSERT INTO flex_actions (issue_id,done_at,type_code,findings_code,creator_id,comment,created_at,ontop,person)
+select 
+	a.id
+	,now()
+	,100
+  ,100
+	,99
+  ,'Dodano nowy dokument'||': '||dokument
+	,Now()
+  ,TRUE
+  ,'Wierzyciel'
+from staging_orange_aktualizacja_dok b
+inner join flex_claims a on b.NrEwid = a.creditor_id
+JOIN flex_claim_other_data d on d.issue_id = a.id 
+where value = b.pakiet 
+
+  ;
+
