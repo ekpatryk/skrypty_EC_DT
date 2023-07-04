@@ -185,6 +185,8 @@ join staging_vectrar_aktualizacja_finanse f on f."ID KONTO" = b."kod klienta"
 Where 
 c.stage_code!='4'
 and
+c.package_id in (select id from flex_package where customer_id = 14)
+and
 f."NUMER OPERACJI" not in (
 							select i.item_number
 							FROM flex_claim_items i where i.issue_id = c.id	);
